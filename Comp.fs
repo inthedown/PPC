@@ -34,7 +34,7 @@ module Comp
 
 open System.IO
 open Absyn
-open Machine
+open StackMachine
 open Debug
 open Backend
 
@@ -56,22 +56,22 @@ type Var =
     | Locvar of int (* address relative to bottom of frame *)
 
 (* The variable environment keeps track of global and local variables, and
-   keeps track of next available offset for local variables 
-   
+   keeps track of next available offset for local variables
+
 ex1.c下面的的全局声明
 
 int g ;
-int h[3] 
+int h[3]
 
 构造的环境如下：
 
 h 是整型数组，长度为 3，g是整数，下一个空闲位置是 5
 
 ([("h", (Glovar 4, TypA (TypI, Some 3)));
- ("g", (Glovar 0, TypI))], 5)  
+ ("g", (Glovar 0, TypI))], 5)
 
 实际存储布局如下：
- (0,0)(1,0)(2,0)(3,0) (4,1) ...... 
+ (0,0)(1,0)(2,0)(3,0) (4,1) ......
 *)
 
 type VarEnv = (Var * typ) Env * int
@@ -87,8 +87,7 @@ let isX86Instr = ref false
 (* Bind declared variable in env and generate code to allocate it: *)
 // kind : Glovar / Locvar
 let rec allocateWithMsg (kind: int -> Var) (typ, x) (varEnv: VarEnv) =
-    let varEnv, instrs =
-        allocate (kind: int -> Var) (typ, x) (varEnv: VarEnv)
+    let varEnv, instrs = allocate (kind: int -> Var) (typ, x) (varEnv: VarEnv)
 
     msg
     <| "\nalloc\n"
@@ -100,27 +99,25 @@ let rec allocateWithMsg (kind: int -> Var) (typ, x) (varEnv: VarEnv) =
 and allocate (kind: int -> Var) (typ, x) (varEnv: VarEnv) : VarEnv * instr list =
 
     msg $"allocate called!{(x, typ)}"
- 
+
     // newloc 下个空闲存储位置
     let (env, newloc) = varEnv
 
     match typ with
     | TypA (TypA _, _) -> raise (Failure "allocate: array of arrays not permitted")
     | TypA (t, Some i) ->
-        let newEnv =
-            ((x, (kind (newloc + i), typ)) :: env, newloc + i + 1) //数组内容占用 i个位置,数组变量占用1个位置
+        let newEnv = ((x, (kind (newloc + i), typ)) :: env, newloc + i + 1) //数组内容占用 i个位置,数组变量占用1个位置
 
         let code = [ INCSP i; GETSP; OFFSET(i - 1); SUB ]
         // info (fun () -> printf "new varEnv: %A\n" newEnv)
         (newEnv, code)
     | _ ->
-        let newEnv =
-            ((x, (kind (newloc), typ)) :: env, newloc + 1)
+        let newEnv = ((x, (kind (newloc), typ)) :: env, newloc + 1)
 
         let code = [ INCSP 1 ]
 
         // info (fun () -> printf "new varEnv: %A\n" newEnv) // 调试 显示分配后环境变化
-        
+
         (newEnv, code)
 
 (* Bind declared parameters in env: *)
@@ -137,6 +134,7 @@ let bindParams paras ((env, newloc): VarEnv) : VarEnv = List.fold bindParam (env
 let makeGlobalEnvs (topdecs: topdec list) : VarEnv * FunEnv * instr list =
     let rec addv decs varEnv funEnv =
 
+        msg $"\nGlobal varEnv:\n{varEnv}\n"
         msg $"\nGlobal funEnv:\n{funEnv}\n"
 
         match decs with
@@ -157,10 +155,10 @@ let makeGlobalEnvs (topdecs: topdec list) : VarEnv * FunEnv * instr list =
     栈式虚拟机 无须考虑，每个栈位保存一个变量
 *)
 let x86patch code =
-    if !isX86Instr then
+    if isX86Instr.Value then
         code @ [ CSTI -8; MUL ] // x86 偏移地址*8
     else
-        code 
+        code
 (* ------------------------------------------------------------------- *)
 
 (* Compiling micro-C statements:
@@ -290,7 +288,7 @@ and cAccess access varEnv funEnv : instr list =
         // 栈式虚拟机Stack VM 的全局变量的地址是 栈上的偏移 用 [CSTI addr] 表示
         // F# ! 操作符 取引用类型的值
         | Glovar addr, _ ->
-            if !isX86Instr then
+            if isX86Instr.Value then
                 [ GVAR addr ]
             else
                 [ CSTI addr ]
@@ -337,7 +335,7 @@ let cProgram (Prog topdecs) : instr list =
         let (envf, fdepthf) = bindParams paras (globalVarEnv, 0)
         let code = cStmt body (envf, fdepthf) funEnv
 
-        [ FLabel (paraNums, labf) ]
+        [ FLabel(paraNums, labf) ]
         @ code @ [ RET(paraNums - 1) ]
 
     let functions =
@@ -348,11 +346,11 @@ let cProgram (Prog topdecs) : instr list =
             topdecs
 
     let (mainlab, _, mainparams) = lookup funEnv "main"
-    argc := List.length mainparams
+    argc.Value <- List.length mainparams
 
     globalInit
-    @ [ LDARGS !argc
-        CALL(!argc, mainlab)
+    @ [ LDARGS argc.Value
+        CALL(argc.Value, mainlab)
         STOP ]
       @ List.concat functions
 
@@ -364,8 +362,7 @@ let intsToFile (inss: int list) (fname: string) =
     File.WriteAllText(fname, String.concat " " (List.map string inss))
 
 let writeInstr fname instrs =
-    let ins =
-        String.concat "\n" (List.map string instrs)
+    let ins = String.concat "\n" (List.map string instrs)
 
     File.WriteAllText(fname, ins)
     printfn $"VM instructions saved in file:\n\t{fname}"
@@ -373,7 +370,7 @@ let writeInstr fname instrs =
 
 let compileToFile program fname =
 
-    msg <|sprintf "program:\n %A" program
+    msg <| sprintf "program:\n %A" program
 
     let instrs = cProgram program
 
@@ -382,20 +379,20 @@ let compileToFile program fname =
     writeInstr (fname + ".ins") instrs
 
     let bytecode = code2ints instrs
-    msg <| sprintf "Stack VM numeric code:\n %A\n" bytecode
-    
+
+    msg
+    <| sprintf "Stack VM numeric code:\n %A\n" bytecode
+
     // 面向 x86 的虚拟机指令 略有差异，主要是地址偏移的计算方式不同
     // 单独生成 x86 的指令
-    isX86Instr := true
+    isX86Instr.Value <- true
     let x86instrs = cProgram program
     writeInstr (fname + ".insx86") x86instrs
 
     let x86asmlist = List.map emitx86 x86instrs
-    let x86asmbody =
-        List.fold (fun asm ins -> asm + ins) "" x86asmlist
+    let x86asmbody = List.fold (fun asm ins -> asm + ins) "" x86asmlist
 
-    let x86asm =
-        (x86header + beforeinit !argc + x86asmbody)
+    let x86asm = (x86header + beforeinit argc.Value + x86asmbody)
 
     printfn $"x86 assembly saved in file:\n\t{fname}.asm"
     File.WriteAllText(fname + ".asm", x86asm)

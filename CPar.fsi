@@ -12,7 +12,7 @@ type token =
   | COMMA
   | ASSIGN
   | AMP
-  | QUEST
+  | QUE
   | COLON
   | NOT
   | SEQOR
@@ -23,31 +23,20 @@ type token =
   | LT
   | GE
   | LE
-  | AND
-  | OR
-  | XOR
+  | BOOL
   | PLUS
   | MINUS
   | TIMES
   | DIV
   | MOD
+  | INC
+  | DECR
   | SELFPLUS
   | SELFMINUS
-  | WHILE
-  | DO
-  | FOR
-  | SWITCH
-  | CASE
-  | BREAK
-  | CONTINUE
-  | DEFAULT
-  | TRY
-  | CATCH
-  | THROW
-  | FINALLY
-  | PRINTF
+  | SELFTIMES
+  | SELFDIV
+  | SELFMOD
   | CHAR
-  | STRING
   | ELSE
   | IF
   | INT
@@ -55,15 +44,24 @@ type token =
   | NULL
   | PRINT
   | PRINTLN
-  | PRINTC
   | RETURN
   | VOID
+  | WHILE
+  | FOR
+  | DOWHILE
+  | DOUNTIL
+  | DO
+  | UNTIL
+  | SWITCH
+  | CASE
+  | DEFAULT
+  | IN
+  | CSTBOOL of (bool)
+  | CSTFLOAT of (float32)
   | CSTCHAR of (char)
   | CSTSTRING of (string)
   | NAME of (string)
-  | CSTFLOAT of (float32)
   | CSTINT of (int)
-  | CSTBOOL of (int)
 type tokenId = 
     | TOKEN_EOF
     | TOKEN_LPAR
@@ -76,7 +74,7 @@ type tokenId =
     | TOKEN_COMMA
     | TOKEN_ASSIGN
     | TOKEN_AMP
-    | TOKEN_QUEST
+    | TOKEN_QUE
     | TOKEN_COLON
     | TOKEN_NOT
     | TOKEN_SEQOR
@@ -87,31 +85,20 @@ type tokenId =
     | TOKEN_LT
     | TOKEN_GE
     | TOKEN_LE
-    | TOKEN_AND
-    | TOKEN_OR
-    | TOKEN_XOR
+    | TOKEN_BOOL
     | TOKEN_PLUS
     | TOKEN_MINUS
     | TOKEN_TIMES
     | TOKEN_DIV
     | TOKEN_MOD
+    | TOKEN_INC
+    | TOKEN_DECR
     | TOKEN_SELFPLUS
     | TOKEN_SELFMINUS
-    | TOKEN_WHILE
-    | TOKEN_DO
-    | TOKEN_FOR
-    | TOKEN_SWITCH
-    | TOKEN_CASE
-    | TOKEN_BREAK
-    | TOKEN_CONTINUE
-    | TOKEN_DEFAULT
-    | TOKEN_TRY
-    | TOKEN_CATCH
-    | TOKEN_THROW
-    | TOKEN_FINALLY
-    | TOKEN_PRINTF
+    | TOKEN_SELFTIMES
+    | TOKEN_SELFDIV
+    | TOKEN_SELFMOD
     | TOKEN_CHAR
-    | TOKEN_STRING
     | TOKEN_ELSE
     | TOKEN_IF
     | TOKEN_INT
@@ -119,15 +106,24 @@ type tokenId =
     | TOKEN_NULL
     | TOKEN_PRINT
     | TOKEN_PRINTLN
-    | TOKEN_PRINTC
     | TOKEN_RETURN
     | TOKEN_VOID
+    | TOKEN_WHILE
+    | TOKEN_FOR
+    | TOKEN_DOWHILE
+    | TOKEN_DOUNTIL
+    | TOKEN_DO
+    | TOKEN_UNTIL
+    | TOKEN_SWITCH
+    | TOKEN_CASE
+    | TOKEN_DEFAULT
+    | TOKEN_IN
+    | TOKEN_CSTBOOL
+    | TOKEN_CSTFLOAT
     | TOKEN_CSTCHAR
     | TOKEN_CSTSTRING
     | TOKEN_NAME
-    | TOKEN_CSTFLOAT
     | TOKEN_CSTINT
-    | TOKEN_CSTBOOL
     | TOKEN_end_of_input
     | TOKEN_error
 type nonTerminalId = 
@@ -145,9 +141,6 @@ type nonTerminalId =
     | NONTERM_StmtOrDecSeq
     | NONTERM_Stmt
     | NONTERM_StmtM
-    | NONTERM_StmtCase
-    | NONTERM_StmtCatch
-    | NONTERM_EXCEPTION
     | NONTERM_StmtU
     | NONTERM_Expr
     | NONTERM_ExprNotAccess
@@ -158,8 +151,9 @@ type nonTerminalId =
     | NONTERM_Const
     | NONTERM_ConstFloat
     | NONTERM_ConstChar
-    | NONTERM_ConstString
+    | NONTERM_ConstBool
     | NONTERM_Type
+    | NONTERM_StmtCase
 /// This function maps tokens to integer indexes
 val tagOfToken: token -> int
 

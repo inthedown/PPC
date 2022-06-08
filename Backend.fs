@@ -2,16 +2,13 @@ module Backend
 
 open System.Runtime.InteropServices
 
-open Machine
+open StackMachine
 
-let isLinux =
-    RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
+let isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux)
 
-let isWindows =
-    RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+let isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
 
-let isOSX =
-    RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+let isOSX = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
 
 type operand = string
 
@@ -38,10 +35,10 @@ let new_label =
     let i = ref 0 in
 
     let get () =
-        let v = !i in
+        let v = i.Value in
 
-        (i := (!i) + 1
-         ".Lasm" + (string v))
+        i.Value <- i.Value + 1
+        ".Lasm" + (string v)
 
     get
 
